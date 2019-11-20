@@ -157,16 +157,23 @@ public class GUI extends Application {
             public void handle(ActionEvent event) {
                 state = State.Test;
                 System.out.println(state);
+                startTest();
                 for(int i = 0; i < 50; i++){
+
                     String header = System.currentTimeMillis() + ": ";
-                    //byte[] testPackage = makeRandomPackage(1500) header.getBytes();
-                    send(header.getBytes());
+                    byte[] testPackage = makeRandomPackage(header, 1400);
+                    send(testPackage);
 
                 }
             }
 
         });
 
+    }
+
+    public void startTest(){
+        String startTest = "\\Test";
+        send(startTest.getBytes());
     }
 
     private void disconnect(){
@@ -227,9 +234,14 @@ public class GUI extends Application {
     }
 
 
-    public byte[] makeRandomPackage(int range){
-        byte[] array = new byte[(int)(Math.random()*range)];
+    public byte[] makeRandomPackage(String header, int range){
+        int headerSize = header.getBytes().length;
+        byte[] array = new byte[(int)(Math.random()*range) + headerSize];
         new Random().nextBytes(array);
+
+        for (int i = 0; i < headerSize; i++){
+            array[i] = header.getBytes()[i];
+        }
         return array;
     }
 
@@ -263,19 +275,21 @@ public class GUI extends Application {
                     message = new
                             String(buffer, 0, datagram.getLength(), "UTF-8");
 
-
-                    if(State.Test.equals(state)){
+                    if (message.equals("\\Test"))
+                        state = State.Test;
+                    else if(State.Test.equals(state)){
                         long receiveTime = System.currentTimeMillis();
                         String[] strings = message.split(":");
                         long totalTime = receiveTime - Long.parseLong(strings[0]);
                         System.out.println(totalTime);
                     }
+                    else{
+                        textArea.appendText(message);
+                        textField.clear();
 
-                    textArea.appendText(message);
-                    textField.clear();
-
-                    if(!message.startsWith(nickname))
-                        logger.log(Level.INFO, "Message received");
+                        if(!message.startsWith(nickname))
+                            logger.log(Level.INFO, "Message received");
+                    }
 
                 } catch (IOException e) {
                     System.out.println("Socket closed!");
