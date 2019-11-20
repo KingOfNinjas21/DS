@@ -36,7 +36,7 @@ public class GUI extends Application {
     private Thread send, recive;
     private MulticastSocket socket;
     private State state = State.Login;
-    private enum State {Login, ChatMode, Finnished}
+    private enum State {Login, ChatMode, Finished, Test}
 
     private Logger logger = Logger.getLogger("Info Logger");
 
@@ -73,6 +73,8 @@ public class GUI extends Application {
         TextArea chatField = new TextArea();
         Button bSend = new Button();
         Button bLoggout = new Button();
+        Button test1 = new Button();
+
         TextField msg = new TextField();
 
         chatField.setMaxWidth(390);
@@ -86,6 +88,7 @@ public class GUI extends Application {
         chat.getChildren().add(msg);
         chat.getChildren().add(bSend);
         chat.getChildren().add(bLoggout);
+        chat.getChildren().add(test1);
 
         // set scene
         primaryStage.setScene(new Scene(login, 400, 350));
@@ -149,10 +152,26 @@ public class GUI extends Application {
 
         });
 
+        //TEST 1 Button
+        test1.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                state = State.Test;
+                System.out.println(state);
+                for(int i = 0; i < 50; i++){
+                    String header = System.currentTimeMillis() + ": ";
+                    //byte[] testPackage = makeRandomPackage(1500) header.getBytes();
+                    send(header.getBytes());
+
+                }
+            }
+
+        });
+
     }
 
     private void disconnect(){
-            state = State.Finnished;
+            state = State.Finished;
             try{
                 String s = nickname + " left the chat";
                 send(s.getBytes());
@@ -235,23 +254,34 @@ public class GUI extends Application {
 
         @Override
         public void run() {
-            while (!state.equals(State.Finnished)) {
+            while (!state.equals(State.Finished)) {
                 byte[] buffer = new byte[ReadThread.MAX_LEN];
                 DatagramPacket datagram = new
                         DatagramPacket(buffer, buffer.length, group, port);
                 String message;
                 try {
 
+
                     socket.receive(datagram);
 
                     message = new
                             String(buffer, 0, datagram.getLength(), "UTF-8");
+
+
+                    if(State.Test.equals(state)){
+                        long receiveTime = System.currentTimeMillis();
+                        String[] strings = message.split(":");
+                        long totalTime = receiveTime - Long.parseLong(strings[1]);
+                        System.out.println(totalTime);
+                    }
 
                     textArea.appendText(message);
                     textField.clear();
 
                     if(!message.startsWith(nickname))
                         logger.log(Level.INFO, "Message received");
+
+
 
                 } catch (IOException e) {
                     System.out.println("Socket closed!");
