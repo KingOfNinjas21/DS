@@ -1,1 +1,4 @@
+GChat/target/
 .class
+*.txt
+*.log
