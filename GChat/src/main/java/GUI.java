@@ -1,4 +1,4 @@
-
+import java.io.FileNotFoundException;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
@@ -6,22 +6,20 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.event.ActionEvent;
-import javafx.scene.text.Text;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.net.SocketException;
-import java.nio.charset.Charset;
 import java.util.Random;
-import java.util.Scanner;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import util.LogFileWriter;
 
 public class GUI extends Application {
 
@@ -42,8 +40,9 @@ public class GUI extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-
-
+        // Add a handler to persist logs to the filesystem
+        logger.addHandler(LogFileWriter.getInstance("logs.txt"));
+        
         //Login Scene
         Label nick = new Label();
         Label lPort = new Label();
@@ -152,22 +151,21 @@ public class GUI extends Application {
     }
 
     private void disconnect(){
-            state = State.Finnished;
-            try{
-                String s = nickname + " left the chat";
-                send(s.getBytes());
+        state = State.Finnished;
+        try{
+            String s = nickname + " left the chat";
+            send(s.getBytes());
 
-                send.join();
-                socket.leaveGroup(ip);
-                socket.close();
-                logger.log(Level.INFO, "Connection closed");
-            }
+            send.join();
+            socket.leaveGroup(ip);
+            socket.close();
+            logger.log(Level.INFO, "Connection closed");
+        }
 
-            catch(Exception e){
-                System.out.println("Couldn't close socket");
-                logger.log(Level.INFO, "Could not close Socket");
-            }
-
+        catch(Exception e){
+            System.out.println("Couldn't close socket");
+            logger.log(Level.INFO, "Could not close Socket");
+        }
         System.out.println(state);
     }
 
@@ -231,8 +229,6 @@ public class GUI extends Application {
             this.textField = textField;
         }
 
-
-
         @Override
         public void run() {
             while (!state.equals(State.Finnished)) {
@@ -259,6 +255,5 @@ public class GUI extends Application {
                 }
             }
         }
-
     }
 }
