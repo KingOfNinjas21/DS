@@ -81,6 +81,7 @@ public class GUI extends Application {
 
         bSend.setText("SEND");
         bLoggout.setText("Logout");
+        test1.setText("Start Test");
         msg.setPromptText("Enter message here");
         Pane chat = new VBox();
         chat.getChildren().add(chatField);
@@ -162,9 +163,11 @@ public class GUI extends Application {
 
                     String header = System.currentTimeMillis() + ": ";
                     byte[] testPackage = makeRandomPackage(header, 1400);
+                    //byte[] testPackage = makeFixedSizedPackage(header, 1400);
                     send(testPackage);
 
                 }
+                state = State.ChatMode;
             }
 
         });
@@ -221,10 +224,10 @@ public class GUI extends Application {
                 DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
                 try {
                     socket.send(packet);
-                    logger.log(Level.INFO, "Messege was send");
+                    //logger.log(Level.INFO, "Messege was send");
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                    logger.log(Level.INFO, "Sending failed");
+                    //logger.log(Level.INFO, "Sending failed");
                 }
             }
 
@@ -237,6 +240,17 @@ public class GUI extends Application {
     public byte[] makeRandomPackage(String header, int range){
         int headerSize = header.getBytes().length;
         byte[] array = new byte[(int)(Math.random()*range) + headerSize];
+        new Random().nextBytes(array);
+
+        for (int i = 0; i < headerSize; i++){
+            array[i] = header.getBytes()[i];
+        }
+        return array;
+    }
+
+    public byte[] makeFixedSizedPackage(String header, int size){
+        int headerSize = header.getBytes().length;
+        byte[] array = new byte[size + headerSize];
         new Random().nextBytes(array);
 
         for (int i = 0; i < headerSize; i++){
