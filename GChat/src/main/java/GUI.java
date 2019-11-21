@@ -159,19 +159,24 @@ public class GUI extends Application {
                 state = State.Test;
                 System.out.println(state);
                 startTest();
-                for(int i = 0; i < 50; i++){
+                for(int i = 0; i < 1000; i++){
 
                     String header = System.currentTimeMillis() + ": ";
-                    byte[] testPackage = makeRandomPackage(header, 1400);
-                    //byte[] testPackage = makeFixedSizedPackage(header, 1400);
+                    //byte[] testPackage = makeRandomPackage(header, 1400);
+                    byte[] testPackage = makeFixedSizedPackage(header, 700);
                     send(testPackage);
 
                 }
-                state = State.ChatMode;
+                endTest();
             }
 
         });
 
+    }
+
+    public void endTest() {
+        String endTest = "\\EndTest";
+        send(endTest.getBytes());
     }
 
     public void startTest(){
@@ -266,6 +271,9 @@ public class GUI extends Application {
         private int port;
         private TextArea textArea;
         private TextField textField;
+        private long startTime = (long)Double.POSITIVE_INFINITY;
+        private int msgCount = 0;
+        private boolean printing = true;
 
         ReadThread(MulticastSocket socket, InetAddress group, int port,TextArea textArea, TextField textField) {
             this.socket = socket;
@@ -289,20 +297,32 @@ public class GUI extends Application {
                     message = new
                             String(buffer, 0, datagram.getLength(), "UTF-8");
 
-                    if (message.equals("\\Test"))
+                    if (message.equals("\\EndTest"))
+                        state = State.ChatMode;
+
+
+                    if (message.equals("\\Test")) {
                         state = State.Test;
+                        startTime = System.currentTimeMillis();
+                        msgCount = 0;
+                    }
                     else if(State.Test.equals(state)){
+                        msgCount = msgCount + 1;
                         long receiveTime = System.currentTimeMillis();
                         String[] strings = message.split(":");
                         long totalTime = receiveTime - Long.parseLong(strings[0]);
                         System.out.println(totalTime);
+                        if (startTime + 100 < System.currentTimeMillis() && printing){
+                            System.out.println("Messages received in 100 ms:" + msgCount);
+                            printing = false;
+                        }
                     }
                     else{
                         textArea.appendText(message);
                         textField.clear();
 
-                        if(!message.startsWith(nickname))
-                            logger.log(Level.INFO, "Message received");
+                        //if(!message.startsWith(nickname))
+                            //logger.log(Level.INFO, "Message received");
                     }
 
                 } catch (IOException e) {
