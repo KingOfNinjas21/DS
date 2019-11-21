@@ -19,6 +19,7 @@ public class Controller implements NetworkInputHandler {
     private ControllerState state = ControllerState.Login;
     private final LinkedList<ControllerListener> listeners = new LinkedList<>();
     
+    // this is a thread that listens to socket incoming messages
     private NetworkInputWorker networkInputWorker = null;
     private MulticastSocket socket;
     private InetAddress group;
@@ -71,9 +72,11 @@ public class Controller implements NetworkInputHandler {
     }
     
     public void send(String message) {
+        // if the message doesn't start with '/' then it's a user message
         if (!message.startsWith("/")) {
             message = nickname + ": " + message;
         }
+        // if the message starts with '/' then it's an admin command (a ping command)
         if (message.startsWith("/ping ")) {
             try {
                 String args[] = message.substring(6).split(" ");

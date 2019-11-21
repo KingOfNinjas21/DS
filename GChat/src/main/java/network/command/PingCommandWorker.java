@@ -4,6 +4,19 @@ import controller.Controller;
 import java.util.LinkedList;
 import java.util.Random;
 
+/**
+ * Explanation of the admin /ping command:
+ * Usage: /ping count length
+ * count is the number of packets to send, length is the size of the payload in bytes
+ * When a client sends a ping command, a PingCommandWorker thread is spawed.
+ * The thread sends *count* packets with a payload of size *length* (or random size if *length* is negative)
+ * The packets header starts with '/ping' and is identified by the id of the client that issued the command
+ * The packet header also contains the time at which the packet was sent
+ * Other clients will receive the packet and reply with the same packet except 'ping' is replaced by 'ping-ack'
+ * Upon reception of a 'ping-ack' packet, a client knows if it is one of his own ping packets (by looking at the ID)
+ * Then it can compute the round-trip-time by subtracting the timestamp contained in the packet with the current system time
+ * The average of all delay responses is then computed after a timeout is reached
+ */
 public class PingCommandWorker extends CommandWorker {    
     // number of ping commands to issue
     private final int count;
