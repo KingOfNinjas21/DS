@@ -2,6 +2,7 @@ package network.command;
 
 import controller.Controller;
 import java.util.LinkedList;
+import java.util.Random;
 
 public class PingCommandWorker extends CommandWorker {    
     // number of ping commands to issue
@@ -44,6 +45,17 @@ public class PingCommandWorker extends CommandWorker {
     }
     
     public String buildPayload(int size) {
+        if (size <= 0) {
+            return buildRandomPayload();
+        }
+        return buildFixedSizePayload(size);
+    }
+    
+    public String buildRandomPayload() {
+        return buildFixedSizePayload(1 + new Random().nextInt(1000));
+    }
+    
+    public String buildFixedSizePayload(int size) {
         String payload = "";
         for (int i=0; i<size; ++i) {
             payload += ('a' + Math.random() * 25);

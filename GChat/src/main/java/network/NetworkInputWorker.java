@@ -28,6 +28,8 @@ public class NetworkInputWorker extends Thread {
     
     @Override
     public void run() {
+        int messageCount = 0;
+        long timestamp = System.nanoTime();
         while (!socket.isClosed()) {
             byte[] buffer = new byte[MAX_MESSAGE_LENGTH];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length, group, port);
@@ -46,6 +48,14 @@ public class NetworkInputWorker extends Thread {
                             handler.onReceiveMessage(message);
                         }
                     }
+                }
+                
+                if (System.nanoTime() - timestamp < 100000000L) {
+                    messageCount++;
+                } else {
+                    logger.log(Level.INFO, "Number of messages received in 100ms: " + messageCount);
+                    timestamp = System.nanoTime();
+                    messageCount = 1;
                 }
             } catch (IOException e) {
                 close();
