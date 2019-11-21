@@ -1,5 +1,6 @@
+import controller.Controller;
+import controller.ControllerListener;
 import javafx.application.Application;
-import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -9,38 +10,27 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.event.ActionEvent;
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
-import java.util.Random;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+import javafx.application.Platform;
+import javafx.stage.WindowEvent;
 import util.LogFileWriter;
 
-public class GUI extends Application {
-
-    private static String nickname;
-    private InetAddress ip;
-    private int port;
-
-    static volatile boolean finished = false;
+public class GUI extends Application implements ControllerListener {
+    private static final Logger logger = Logger.getLogger(GUI.class.getName());
+    private TextArea chatField;
+    
     public static void main(String[] args) {
         launch(args);
     }
-    private Thread send, recive;
-    private MulticastSocket socket;
-    private State state = State.Login;
-    private enum State {Login, ChatMode, Finished, Test}
-
-    private Logger logger = Logger.getLogger(GUI.class.getName());
 
     @Override
     public void start(Stage primaryStage) {
-        // Add a handler to persist logs to the filesystem
         logger.addHandler(LogFileWriter.getInstance());
         
-        //Login Scene
+        // Listen to Controller Events
+        Controller.getInstance().addListener(this);
+        
+        // Build Login State Scene
         Label nick = new Label();
         Label lPort = new Label();
         Label lIp = new Label();
@@ -51,10 +41,10 @@ public class GUI extends Application {
 
         Button bLogin = new Button();
 
-        nick.setText("Choose Nickname:");
-        lPort.setText("Enter Port");
-        lIp.setText("Enter Ip");
-        bLogin.setText("Start");
+        nick.setText("Nickname:");
+        lPort.setText("Group Port:");
+        lIp.setText("Group Address:");
+        bLogin.setText("Go");
 
         Pane login = new VBox();
         login.getChildren().add(nick);
@@ -65,235 +55,65 @@ public class GUI extends Application {
         login.getChildren().add(inPort);
         login.getChildren().add(bLogin);
 
-        //chat scene
-        TextArea chatField = new TextArea();
+        // Build Chat State Scene
+        chatField = new TextArea();
         Button bSend = new Button();
         Button bLoggout = new Button();
-        Button test1 = new Button();
 
         TextField msg = new TextField();
 
         chatField.setMaxWidth(390);
         chatField.setMaxHeight(320);
 
-        bSend.setText("SEND");
+        bSend.setText("Send");
         bLoggout.setText("Logout");
-        msg.setPromptText("Enter message here");
+        msg.setPromptText("Type your message here...");
         Pane chat = new VBox();
         chat.getChildren().add(chatField);
         chat.getChildren().add(msg);
         chat.getChildren().add(bSend);
         chat.getChildren().add(bLoggout);
-        chat.getChildren().add(test1);
 
-        // set scene
+        // Set Initial Scene
         primaryStage.setScene(new Scene(login, 400, 350));
         primaryStage.show();
 
-
-
-        //Login to chat
-        System.out.println(state);
-        bLogin.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                nickname = inNickname.getText();
-                try {
-                    ip = InetAddress.getByName(inIp.getText());
-                } catch (Exception e) {
-                    System.out.println(e);//handle it your self
-                }
-
-                port = Integer.parseInt(inPort.getText());
-
-                if(connect()) {
-                    primaryStage.setScene(new Scene(chat, 300, 350));
-                    state = State.ChatMode;
-                    //read msg
-                    try {
-                        recive = new Thread(new ReadThread(socket, ip, port, chatField, msg));
-                        recive.start();
-                    } catch (Exception e) {
-                        System.out.println("Couldn't open thread");
-                    }
-                    System.out.println(state);
-                }
-
+        // Login Action
+        bLogin.setOnAction((ActionEvent e) -> {
+            String nickname = inNickname.getText();
+            String group = inIp.getText();
+            int port = Integer.parseInt(inPort.getText());
+            if (Controller.getInstance().connect(nickname, group, port)) {
+                primaryStage.setScene(new Scene(chat, 300, 350));
             }
         });
 
-
-
-        //send chat msg
-        bSend.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                if(msg != null && !msg.getText().isEmpty()){
-                    String messege = nickname + " : " + msg.getText() + "\n";
-                    send(messege.getBytes());
-                    System.out.println("send");
-                }
-
+        // Send Command/Message Action
+        bSend.setOnAction((ActionEvent e) -> {
+            if (msg != null && !msg.getText().isEmpty()) {
+                Controller.getInstance().send(msg.getText());
+                msg.setText("");
             }
         });
 
-
-        //Logout
-        bLoggout.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                disconnect();
-                primaryStage.close();
-            }
-
+        // Logout Action
+        bLoggout.setOnAction((ActionEvent e) -> {
+            Controller.getInstance().disconnect();
+            primaryStage.close();
         });
-
-        //TEST 1 Button
-        test1.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                state = State.Test;
-                System.out.println(state);
-                startTest();
-                for(int i = 0; i < 50; i++){
-
-                    String header = System.currentTimeMillis() + ": ";
-                    byte[] testPackage = makeRandomPackage(header, 1400);
-                    send(testPackage);
-
-                }
-            }
-
+        
+        // Exit on Close Window
+        primaryStage.setOnCloseRequest((WindowEvent e) -> {
+            Controller.getInstance().disconnect();
+            Platform.exit();
+            System.exit(0);
         });
-
     }
 
-    public void startTest(){
-        String startTest = "\\Test";
-        send(startTest.getBytes());
-    }
-
-    private void disconnect(){
-            state = State.Finished;
-            try{
-                String s = nickname + " left the chat";
-                send(s.getBytes());
-
-                send.join();
-                socket.leaveGroup(ip);
-                socket.close();
-                logger.log(Level.INFO, "Connection closed");
-            }
-
-            catch(Exception e){
-                System.out.println("Couldn't close socket");
-                logger.log(Level.INFO, "Could not close Socket");
-            }
-
-        System.out.println(state);
-    }
-
-    private boolean connect(){
-        try {
-            socket = new MulticastSocket(port);
-            // Since we are deploying
-            socket.setTimeToLive(0);
-            //this on localhost only (For a subnet set it as 1)
-            socket.joinGroup(ip);
-            logger.log(Level.INFO, "Connected to group ip " + ip + " on port " + port);
-            return true;
-        }catch(Exception e){
-            System.out.println("Couldn't create socket");
-            logger.log(Level.INFO, "Could not create Socket");
-            return false;
+    @Override
+    public void onReceiveMessage(String message) {
+        if (chatField != null) {
+            chatField.appendText(message + "\n");
         }
-
-
-    }
-
-
-    private void send(byte[] data){
-        send = new Thread("Send Threat"){
-            public void run() {
-                DatagramPacket packet = new DatagramPacket(data, data.length, ip, port);
-                try {
-                    socket.send(packet);
-                    logger.log(Level.INFO, "Messege was send");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                    logger.log(Level.INFO, "Sending failed");
-                }
-            }
-
-         };
-        send.start();
-
-    }
-
-
-    public byte[] makeRandomPackage(String header, int range){
-        int headerSize = header.getBytes().length;
-        byte[] array = new byte[(int)(Math.random()*range) + headerSize];
-        new Random().nextBytes(array);
-
-        for (int i = 0; i < headerSize; i++){
-            array[i] = header.getBytes()[i];
-        }
-        return array;
-    }
-
-    class ReadThread implements Runnable {
-        private static final int MAX_LEN = 1000;
-        private MulticastSocket socket;
-        private InetAddress group;
-        private int port;
-        private TextArea textArea;
-        private TextField textField;
-
-        ReadThread(MulticastSocket socket, InetAddress group, int port,TextArea textArea, TextField textField) {
-            this.socket = socket;
-            this.group = group;
-            this.port = port;
-            this.textArea = textArea;
-            this.textField = textField;
-        }
-
-        @Override
-        public void run() {
-            while (!state.equals(State.Finished)) {
-                byte[] buffer = new byte[ReadThread.MAX_LEN];
-                DatagramPacket datagram = new
-                        DatagramPacket(buffer, buffer.length, group, port);
-                String message;
-                try {
-
-                    socket.receive(datagram);
-
-                    message = new
-                            String(buffer, 0, datagram.getLength(), "UTF-8");
-
-                    if (message.equals("\\Test"))
-                        state = State.Test;
-                    else if(State.Test.equals(state)){
-                        long receiveTime = System.currentTimeMillis();
-                        String[] strings = message.split(":");
-                        long totalTime = receiveTime - Long.parseLong(strings[0]);
-                        System.out.println(totalTime);
-                    }
-                    else{
-                        textArea.appendText(message);
-                        textField.clear();
-
-                        if(!message.startsWith(nickname))
-                            logger.log(Level.INFO, "Message received");
-                    }
-
-                } catch (IOException e) {
-                    System.out.println("Socket closed!");
-                    logger.log(Level.INFO, "Socket closed");
-                }
-            }
-        }
-
     }
 }
