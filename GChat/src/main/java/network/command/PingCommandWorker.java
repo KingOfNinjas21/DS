@@ -65,7 +65,7 @@ public class PingCommandWorker extends CommandWorker {
     }
     
     public String buildRandomPayload() {
-        return buildFixedSizePayload(1 + new Random().nextInt(1000));
+        return buildFixedSizePayload(1 + new Random().nextInt(1400));
     }
     
     public String buildFixedSizePayload(int size) {
