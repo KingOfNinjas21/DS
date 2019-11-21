@@ -12,6 +12,9 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
 public final class LogFileWriter extends Handler {
+    // default logs file name
+    private static final String DEFAULT_LOGS_FILENAME = "logs.txt";
+    
     // registered loggers
     private static final Map<String, LogFileWriter> INSTANCES = new HashMap<>();
     
@@ -33,6 +36,10 @@ public final class LogFileWriter extends Handler {
             } catch (FileNotFoundException ex) {}
         }
         return INSTANCES.get(filename);
+    }
+    
+    public static LogFileWriter getInstance() {
+        return getInstance(DEFAULT_LOGS_FILENAME);
     }
 
     @Override

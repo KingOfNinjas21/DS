@@ -1,4 +1,3 @@
-import java.io.FileNotFoundException;
 import javafx.application.Application;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
@@ -15,9 +14,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Random;
-import java.util.logging.Handler;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import util.LogFileWriter;
 
@@ -36,12 +33,12 @@ public class GUI extends Application {
     private State state = State.Login;
     private enum State {Login, ChatMode, Finnished}
 
-    private Logger logger = Logger.getLogger("Info Logger");
+    private Logger logger = Logger.getLogger(GUI.class.getName());
 
     @Override
     public void start(Stage primaryStage) {
         // Add a handler to persist logs to the filesystem
-        logger.addHandler(LogFileWriter.getInstance("logs.txt"));
+        logger.addHandler(LogFileWriter.getInstance());
         
         //Login Scene
         Label nick = new Label();
